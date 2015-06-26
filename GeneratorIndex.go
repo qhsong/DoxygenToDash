@@ -20,14 +20,17 @@ func addEntryType(typename string, s *goquery.Selection) {
 	linkLabel := s.Find(".memItemRight").Find("a")
 	linkLabel.Each(func(i int, s *goquery.Selection) {
 		structName := s.Text()
+		structName = strings.Trim(structName, "\r\n ")
 		link, _ := s.Attr("href")
 		link = strings.Trim(link, "\r\n ")
-		_, err := db.Exec("insert or ignore into searchIndex(name,type,path) VALUES('" + structName + "','" + typename + "','" + link + "')")
-		if err != nil {
-			log.Fatal("Insert " + typename + " " + structName + "Failed!")
-			return
+		if len(structName) != 0 && len(link) != 0 {
+			_, err := db.Exec("insert or ignore into searchIndex(name,type,path) VALUES('" + structName + "','" + typename + "','" + link + "')")
+			if err != nil {
+				log.Fatal("Insert " + typename + " " + structName + "Failed!")
+				return
+			}
+			log.Print("Insert " + typename + structName)
 		}
-		log.Print("Insert " + typename + structName)
 	})
 }
 func addFunAndEnum(typeName string, s *goquery.Selection) {
@@ -36,12 +39,16 @@ func addFunAndEnum(typeName string, s *goquery.Selection) {
 		funlabel := s.Find("a").First()
 		funName := funlabel.Text()
 		funAddr, _ := funlabel.Attr("href")
-		_, err := db.Exec("insert or ignore into searchIndex(name,type,path) VALUES('" + funName + "','" + typeName + "','" + funAddr + "')")
-		if err != nil {
-			log.Fatal("Insert " + typeName + " " + funName + "Failed!")
-			return
+		funAddr = strings.Trim(funAddr, "\r\n ")
+		funName = strings.Trim(funName, "\r\n ")
+		if len(funName) != 0 && len(funAddr) != 0 {
+			_, err := db.Exec("insert or ignore into searchIndex(name,type,path) VALUES('" + funName + "','" + typeName + "','" + funAddr + "')")
+			if err != nil {
+				log.Fatal("Insert " + typeName + " " + funName + "Failed!")
+				return
+			}
+			log.Print("Insert " + typeName + " " + funName)
 		}
-		log.Print("Insert " + typeName + " " + funName)
 
 	})
 }
@@ -93,13 +100,15 @@ func main() {
 			keyword := s.Text()
 			keyword = strings.Trim(keyword, "\r\n ")
 			if _, ok := UrlMap.Get(keyword); ok == false {
-				_, err = db.Exec("insert or ignore into searchIndex(name,type,path) VALUES('" + keyword + "','Word','" + link + "')")
-				if err != nil {
-					log.Fatal(err)
-					return
+				if len(keyword) != 0 && len(link) != 0 {
+					_, err = db.Exec("insert or ignore into searchIndex(name,type,path) VALUES('" + keyword + "','Word','" + link + "')")
+					if err != nil {
+						log.Fatal(err)
+						return
+					}
+					log.Print(link)
+					UrlChan <- link
 				}
-				log.Print(link)
-				UrlChan <- link
 			}
 		})
 		<-ExitFlag
@@ -130,11 +139,13 @@ func parseFile(UrlList *chan string, ExitFlag chan bool) {
 					filename := s.Text()
 					newUrl, _ := s.Attr("href")
 					if _, ok := UrlMap.Get(filename); ok == false {
-						_, err := db.Exec("insert or ignore into searchIndex(name,type,path) VALUES('" + filename + "','File','" + newUrl + "')")
-						if err != nil {
-							log.Fatal(err)
+						if len(filename) != 0 && len(newUrl) != 0 {
+							_, err := db.Exec("insert or ignore into searchIndex(name,type,path) VALUES('" + filename + "','File','" + newUrl + "')")
+							if err != nil {
+								log.Fatal(err)
+							}
+							*UrlList <- newUrl
 						}
-						*UrlList <- newUrl
 					}
 				})
 				otherList := doc.Find(".memberdecls")
